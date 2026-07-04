@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>PyQuest — Python Practice Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #12131f; }
+  #root { min-height: 100vh; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #2a2c42; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+// ---------- Simple icon components (emoji-based, no external icon lib needed) ----------
+function Icon({ children, size = 16, color, style = {} }) {
+  return <span style={{ fontSize: size, color, lineHeight: 1, display: "inline-block", ...style }}>{children}</span>;
+}
+const Check = (p) => <Icon {...p}>✓</Icon>;
+const X = (p) => <Icon {...p}>✕</Icon>;
+const Zap = (p) => <Icon {...p}>⚡</Icon>;
+const Trophy = (p) => <Icon {...p}>🏆</Icon>;
+const ChevronRight = (p) => <Icon {...p}>›</Icon>;
+const RotateCcw = (p) => <Icon {...p}>↺</Icon>;
+const Terminal = (p) => <Icon {...p}>❯</Icon>;
+const Flame = (p) => <Icon {...p}>🔥</Icon>;
+const Gamepad2 = (p) => <Icon {...p}>🎮</Icon>;
+const BookOpen = (p) => <Icon {...p}>📖</Icon>;
+const Code2 = (p) => <Icon {...p}>⌨</Icon>;
+
+
+// ---------- Question Bank ----------
+const TOPICS = [
+  {
+    id: "vars",
+    name: "Variables & Types",
+    color: "#FFD43B",
+    concept: "Variable ek 'box' hai jisme value store hoti hai. Python auto detect karta hai ki value kis type ki hai — int, float, str, bool.",
+    questions: [
+      { q: "x = 10\ny = \"10\"\nprint(type(x) == type(y))", type: "predict", options: ["True", "False", "Error", "None"], answer: 1, exp: "x ek integer hai, y ek string hai — dono ka type alag hota hai, isliye False." },
+      { q: "Python mein variable ka naam kis se start nahi ho sakta?", type: "mcq", options: ["Letter se", "Underscore se", "Number se", "Underscore ya letter dono se"], answer: 2, exp: "Variable name number se start nahi ho sakta, jaise '1name' invalid hai. Letter ya underscore se start hona chahiye." },
+      { q: "price = 99.5\nprint(type(price))", type: "predict", options: ["<class 'int'>", "<class 'float'>", "<class 'str'>", "<class 'double'>"], answer: 1, exp: "Decimal point wale number Python mein 'float' type hote hain." },
+      { q: "a, b = 5, 10\na, b = b, a\nprint(a, b)", type: "predict", options: ["5 10", "10 5", "Error", "5 5"], answer: 1, exp: "Yeh 'swap trick' hai — a aur b ki values ek line mein swap ho jaati hain. Result: 10 5." },
+      { q: "Kaunsa valid boolean value hai Python mein?", type: "mcq", options: ["true", "True", "TRUE", "1true"], answer: 1, exp: "Python case-sensitive hai — boolean values hamesha capital letter se shuru hoti hain: True / False." },
+      { q: "x = int(\"7\")\nprint(x + 3)", type: "predict", options: ["73", "10", "Error", "7+3"], answer: 1, exp: "int(\"7\") string \"7\" ko number 7 mein convert kar deta hai, isliye 7+3 = 10." },
+      { q: "name = None\nprint(type(name))", type: "predict", options: ["<class 'NoneType'>", "<class 'null'>", "Error", "<class 'str'>"], answer: 0, exp: "'None' ek special value hai jo 'kuch bhi nahi' represent karti hai, uska type NoneType hota hai." },
+      { q: "x = 5\nx += 3\nprint(x)", type: "predict", options: ["5", "8", "53", "Error"], answer: 1, exp: "'x += 3' matlab 'x = x + 3' — 5+3 = 8." },
+      { q: "print(type(3.0))", type: "predict", options: ["<class 'int'>", "<class 'float'>", "<class 'str'>", "<class 'double'>"], answer: 1, exp: "Decimal point wale number, chahe .0 ho, float hi kehlate hain." },
+      { q: "print(type(\"Hello\"))", type: "predict", options: ["<class 'str'>", "<class 'string'>", "<class 'char'>", "Error"], answer: 0, exp: "Text ka type Python mein 'str' hota hai." },
+      { q: "x = 5\ny = 2\nprint(x / y)", type: "predict", options: ["2", "2.5", "2.0", "Error"], answer: 1, exp: "'/' hamesha true division hai — result float mein aata hai chahe divisible ho ya na ho. 5/2 = 2.5." },
+      { q: "print(True + True)", type: "predict", options: ["True", "2", "TrueTrue", "Error"], answer: 1, exp: "Python mein bool actually int ka special type hai — True=1, False=0. Isliye True+True = 1+1 = 2." },
+      { q: "print(\"5\" + \"5\")", type: "predict", options: ["10", "55", "Error", "5 5"], answer: 1, exp: "Yeh dono strings hain, isliye '+' inhe concatenate karta hai (jodta hai), add nahi — result '55'." },
+      { q: "print(int(3.9))", type: "predict", options: ["4", "3", "3.9", "Error"], answer: 1, exp: "int() decimal ko round nahi karta, seedha truncate (kaat) deta hai — 3.9 se 3 milega, 4 nahi." },
+      { q: "print(float(5))", type: "predict", options: ["5", "5.0", "'5'", "Error"], answer: 1, exp: "float() integer ko decimal form mein convert kar deta hai — 5 se 5.0." },
+      { q: "x = 10\nx = \"ten\"\nprint(x)", type: "predict", options: ["10", "ten", "Error", "TypeError"], answer: 1, exp: "Python dynamically typed hai — ek variable ko dobara alag type ki value assign kar sakte ho, koi error nahi aata." },
+      { q: "print(str(100))", type: "predict", options: ["100", "'100'", "Error", "100.0"], answer: 0, exp: "str() number ko text mein convert kar deta hai — display same dikhta hai, par ab woh string hai number nahi." },
+      { q: "a = b = c = 5\nprint(a, b, c)", type: "predict", options: ["5 5 5", "Error", "a b c", "5"], answer: 0, exp: "Yeh multiple assignment hai — teeno variables ko ek saath 5 assign ho jaata hai." },
+      { q: "print(type(5 // 2))", type: "predict", options: ["<class 'int'>", "<class 'float'>", "<class 'str'>", "Error"], answer: 0, exp: "'//' floor division hamesha whole number (int) deta hai jab dono operands int hon." },
+      { q: "print(len(str(12345)))", type: "predict", options: ["5", "12345", "1", "Error"], answer: 0, exp: "Pehle number ko string mein convert kiya ('12345'), phir uski length count ki — 5 characters." },
+    ],
+  },
+  {
+    id: "ops",
+    name: "Operators",
+    color: "#4B8BBE",
+    concept: "Operators se hum calculations aur comparisons karte hain — jaise +, -, //, %, ==, aur logical and/or/not.",
+    questions: [
+      { q: "print(7 // 2)", type: "predict", options: ["3.5", "3", "4", "Error"], answer: 1, exp: "'//' floor division hai — decimal ko hata kar sirf whole number deta hai. 7/2=3.5, floor karke 3." },
+      { q: "print(2 ** 3)", type: "predict", options: ["6", "8", "9", "5"], answer: 1, exp: "'**' power/exponent operator hai. 2 ka power 3 = 8." },
+      { q: "print(10 % 3)", type: "predict", options: ["3", "1", "0", "3.33"], answer: 1, exp: "'%' modulus operator hai jo remainder deta hai. 10 ÷ 3 = 3 baaki 1." },
+      { q: "print(5 == 5.0)", type: "predict", options: ["True", "False", "Error", "None"], answer: 0, exp: "Python value compare karta hai, type nahi (== ke liye). 5 aur 5.0 ki value same hai, isliye True." },
+      { q: "print(not True)", type: "predict", options: ["True", "False", "Error", "None"], answer: 1, exp: "'not' operator boolean ko ulta kar deta hai — True ban jaata hai False." },
+      { q: "print(3 != 4)", type: "predict", options: ["True", "False", "Error", "3"], answer: 0, exp: "'!=' matlab 'not equal to'. 3 aur 4 barabar nahi hain, isliye True." },
+      { q: "print(5 > 3 and 2 < 1)", type: "predict", options: ["True", "False", "Error", "None"], answer: 1, exp: "'and' ke liye dono conditions True honi chahiye. Pehli True hai, doosri (2<1) False hai — isliye overall False." },
+      { q: "print(5 > 3 or 2 < 1)", type: "predict", options: ["True", "False", "Error", "None"], answer: 0, exp: "'or' ke liye sirf ek condition True hone se kaam ban jaata hai. Pehli condition True hai, isliye result True." },
+      { q: "print(-7 // 2)", type: "predict", options: ["-3", "-4", "-3.5", "3"], answer: 1, exp: "Floor division negative numbers mein neeche (chhote number) ki taraf round karta hai — -3.5 se -4." },
+      { q: "print(2 + 3 * 4)", type: "predict", options: ["20", "14", "24", "9"], answer: 1, exp: "Multiplication pehle hota hai (BODMAS jaisa rule) — 3*4=12, phir 2+12=14." },
+      { q: "print((2 + 3) * 4)", type: "predict", options: ["20", "14", "9", "24"], answer: 0, exp: "Brackets ke andar ka part pehle solve hota hai — (2+3)=5, phir 5*4=20." },
+      { q: "x = 5\nx *= 2\nprint(x)", type: "predict", options: ["5", "10", "52", "Error"], answer: 1, exp: "'x *= 2' matlab 'x = x * 2' — 5*2 = 10." },
+      { q: "print(10 >= 10)", type: "predict", options: ["True", "False", "Error", "10"], answer: 0, exp: "'>=' greater-than-or-equal — 10 apne aap ke barabar hai, isliye True." },
+      { q: "print(1 < 2 < 3)", type: "predict", options: ["True", "False", "Error", "1"], answer: 0, exp: "Python mein chained comparison chalta hai — yeh 1<2 and 2<3 ke barabar hai, dono True hain isliye result True." },
+      { q: "print(\"a\" == \"a\")", type: "predict", options: ["True", "False", "Error", "None"], answer: 0, exp: "'==' strings ka content compare karta hai — dono same text hai, isliye True." },
+      { q: "print(4 / 2)", type: "predict", options: ["2", "2.0", "4", "Error"], answer: 1, exp: "'/' hamesha float result deta hai chahe number pura divide ho jaaye — 4/2 = 2.0." },
+      { q: "print(\"py\" in \"python\")", type: "predict", options: ["True", "False", "Error", "py"], answer: 0, exp: "'in' check karta hai ki ek string doosri ke andar maujood hai ya nahi — 'py', 'python' ke andar hai, isliye True." },
+      { q: "print(2 != 2.0)", type: "predict", options: ["True", "False", "Error", "None"], answer: 1, exp: "'!=' bhi value compare karta hai, type nahi — 2 aur 2.0 same value hain, isliye != False deta hai." },
+      { q: "print(not False)", type: "predict", options: ["True", "False", "Error", "None"], answer: 0, exp: "'not' boolean ko ulta karta hai — not False = True." },
+      { q: "print(bool(-5))", type: "predict", options: ["True", "False", "Error", "-5"], answer: 0, exp: "Sirf 0 falsy hota hai — koi bhi non-zero number (chahe negative ho) truthy hota hai, isliye True." },
+    ],
+  },
+  {
+    id: "strings",
+    name: "Strings",
+    color: "#4ADE80",
+    concept: "String yaani text — quotes ('' ya \"\") ke andar. Indexing, slicing aur methods (.upper(), .lower() etc) se inhe manipulate karte hain.",
+    questions: [
+      { q: "name = \"Aditi\"\nprint(name[0])", type: "predict", options: ["A", "d", "i", "Error"], answer: 0, exp: "Indexing 0 se start hoti hai, isliye name[0] pehla character 'A' deta hai." },
+      { q: "print(\"Hi\" + \"There\")", type: "predict", options: ["Hi There", "HiThere", "Error", "Hi+There"], answer: 1, exp: "'+' strings ko directly jod deta hai (concatenation), koi space add nahi hota, isliye 'HiThere'." },
+      { q: "print(\"abc\" * 3)", type: "predict", options: ["abcabcabc", "abc3", "Error", "abc abc abc"], answer: 0, exp: "String ko number se multiply karne par woh utni baar repeat hoti hai — space ke bina." },
+      { q: "s = \"Python\"\nprint(s[1:4])", type: "predict", options: ["Pyt", "yth", "ytho", "Pytho"], answer: 1, exp: "Slicing s[1:4] index 1 se start hoke index 4 tak (exclusive) chalti hai → 'yth'." },
+      { q: "Kaunsa method string ko uppercase mein convert karta hai?", type: "mcq", options: [".upper()", ".Upper()", ".toUpper()", ".big()"], answer: 0, exp: "Python mein string method hamesha lowercase hota hai: .upper() sabko capital letters mein convert karta hai." },
+      { q: "name = \"Aditi\"\nage = 20\nprint(f\"{name} is {age}\")", type: "predict", options: ["name is age", "Aditi is 20", "Error", "{name} is {age}"], answer: 1, exp: "f-string (f\"...\") ke andar {variable} apne aap actual value se replace ho jaata hai." },
+      { q: "print(\"  hello  \".strip())", type: "predict", options: ["hello", "  hello  ", "Error", "hello  "], answer: 0, exp: ".strip() string ke shuru aur end ke extra spaces hata deta hai." },
+      { q: "print(len(\"Python\"))", type: "predict", options: ["5", "6", "7", "Error"], answer: 1, exp: "len() string mein total characters count karta hai — P-y-t-h-o-n = 6 characters." },
+      { q: "print(\"Python\"[-1])", type: "predict", options: ["P", "n", "o", "Error"], answer: 1, exp: "Negative indexing end se count karti hai — [-1] hamesha last character deta hai, yahan 'n'." },
+      { q: "print(\"python\".capitalize())", type: "predict", options: ["Python", "PYTHON", "python", "Error"], answer: 0, exp: ".capitalize() sirf pehla letter capital karta hai, baaki lowercase rehta hai." },
+      { q: "print(\"Hello World\".lower())", type: "predict", options: ["hello world", "HELLO WORLD", "Hello World", "Error"], answer: 0, exp: ".lower() poori string ko lowercase mein convert kar deta hai." },
+      { q: "print(\"a,b,c\".split(\",\"))", type: "predict", options: ["['a,b,c']", "['a', 'b', 'c']", "'a b c'", "Error"], answer: 1, exp: ".split(\",\") string ko comma dekh kar todta hai aur ek list bana deta hai." },
+      { q: "print(\"-\".join([\"a\",\"b\",\"c\"]))", type: "predict", options: ["a-b-c", "abc", "['a','b','c']", "Error"], answer: 0, exp: ".join() list ke items ko diye gaye separator (yahan '-') se jod deta hai." },
+      { q: "print(\"Hello\".replace(\"H\", \"J\"))", type: "predict", options: ["Hello", "Jello", "HJello", "Error"], answer: 1, exp: ".replace(old, new) purane character/text ko naye se badal deta hai — 'H' ban gaya 'J'." },
+      { q: "print(\"python\" in \"I love python\")", type: "predict", options: ["True", "False", "Error", "python"], answer: 0, exp: "'in' check karta hai ki substring bade string ke andar hai ya nahi — 'python' maujood hai, isliye True." },
+      { q: "print(\"5\" * 2)", type: "predict", options: ["10", "55", "Error", "5 5"], answer: 1, exp: "Yeh string hai number nahi, isliye '*' repeat karta hai, add nahi — '5' do baar = '55'." },
+      { q: "print(\"Hello\"[::-1])", type: "predict", options: ["Hello", "olleH", "Error", "H"], answer: 1, exp: "[::-1] slicing trick hai jo string ko reverse kar deti hai — 'Hello' ban jaata hai 'olleH'." },
+      { q: "print(\"  hi\".lstrip())", type: "predict", options: ["hi", "  hi", "hi  ", "Error"], answer: 0, exp: ".lstrip() sirf left (shuru) side ke spaces hata deta hai." },
+      { q: "print(\"Python\".startswith(\"Py\"))", type: "predict", options: ["True", "False", "Error", "Py"], answer: 0, exp: ".startswith() check karta hai ki string diye gaye text se start hoti hai ya nahi — 'Python' 'Py' se start hoti hai." },
+      { q: "name = \"Aditi\"\nprint(f\"Hello, {name}!\")", type: "predict", options: ["Hello, name!", "Hello, Aditi!", "Error", "{name}"], answer: 1, exp: "f-string ke andar {name} apne aap actual value 'Aditi' se replace ho jaata hai." },
+    ],
+  },
+  {
+    id: "cond",
+    name: "Conditionals",
+    color: "#FB7185",
+    concept: "if / elif / else se hum decisions lete hain — condition True hone par ek code chalta hai, warna doosra.",
+    questions: [
+      { q: "x = 15\nif x > 10:\n    print(\"Big\")\nelif x > 5:\n    print(\"Medium\")\nelse:\n    print(\"Small\")", type: "predict", options: ["Big", "Medium", "Small", "Error"], answer: 0, exp: "x=15, jo pehli condition (x>10) hi True hai, isliye 'Big' print hoga — baaki conditions check hi nahi hoti." },
+      { q: "print(bool(0))", type: "predict", options: ["True", "False", "0", "Error"], answer: 1, exp: "Python mein 0, khaali string \"\", aur khaali list — sab 'falsy' hote hain, isliye bool(0) = False." },
+      { q: "Multiple conditions ek saath check karne ke liye kaunsa keyword use hota hai?", type: "mcq", options: ["and", "&&", "AND", "also"], answer: 0, exp: "Python mein 'and', 'or', 'not' words use hote hain, symbols (&&) nahi — woh JavaScript/C mein hote hain." },
+      { q: "age = 20\nif age >= 18 and age < 60:\n    print(\"Adult\")", type: "predict", options: ["Adult", "Nothing prints", "Error", "18"], answer: 0, exp: "age=20 dono conditions satisfy karta hai (>=18 aur <60), isliye 'Adult' print hoga." },
+      { q: "score = 40\nif score > 50:\n    print(\"Pass\")\nprint(\"Done\")", type: "predict", options: ["Pass\\nDone", "Done", "Pass", "Nothing"], answer: 1, exp: "Condition False hai isliye 'Pass' skip hota hai, lekin 'Done' if ke bahar hai isliye woh hamesha chalega." },
+      { q: "x = 5\nif x:\n    print(\"yes\")\nelse:\n    print(\"no\")", type: "predict", options: ["yes", "no", "5", "Error"], answer: 0, exp: "Koi bhi non-zero number truthy hota hai, isliye 'if x' True treat hota hai — 'yes' print hoga." },
+      { q: "if \"\":\n    print(\"A\")\nelse:\n    print(\"B\")", type: "predict", options: ["A", "B", "Error", "Nothing"], answer: 1, exp: "Empty string \"\" falsy hoti hai, isliye if False ho jaata hai aur else ka 'B' chalta hai." },
+      { q: "x = 10\nif x == 10:\n    print(\"ten\")\nelif x == 10:\n    print(\"also ten\")", type: "predict", options: ["ten", "also ten", "ten\\nalso ten", "Nothing"], answer: 0, exp: "Pehli True condition milte hi Python baaki elif skip kar deta hai — sirf 'ten' print hoga." },
+      { q: "print(5 if True else 10)", type: "predict", options: ["5", "10", "True", "Error"], answer: 0, exp: "Yeh ternary/conditional expression hai: 'value_if_true if condition else value_if_false'. Condition True hai isliye 5." },
+      { q: "x = -5\nif x > 0:\n    print(\"positive\")\nelif x < 0:\n    print(\"negative\")\nelse:\n    print(\"zero\")", type: "predict", options: ["positive", "negative", "zero", "Error"], answer: 1, exp: "-5, 0 se chhota hai, isliye elif condition (x<0) True hoti hai — 'negative' print hoga." },
+      { q: "'or' ka use kya hota hai conditions mein?", type: "mcq", options: ["Dono conditions True honi chahiye", "Kam se kam ek condition True honi chahiye", "Koi bhi condition True nahi honi chahiye", "Sirf ek hi condition allowed hai"], answer: 1, exp: "'or' True deta hai jab conditions mein se kam se kam ek bhi True ho." },
+      { q: "x = 0\nif x:\n    print(\"A\")\nelse:\n    print(\"B\")", type: "predict", options: ["A", "B", "0", "Error"], answer: 1, exp: "0 falsy hota hai Python mein, isliye if False ho jaata hai aur else chalta hai — 'B'." },
+      { q: "temp = 30\nif temp > 35:\n    print(\"Hot\")\nelif temp > 25:\n    print(\"Warm\")\nelse:\n    print(\"Cool\")", type: "predict", options: ["Hot", "Warm", "Cool", "Error"], answer: 1, exp: "30, 35 se bada nahi hai lekin 25 se bada hai — isliye elif condition True hoti hai: 'Warm'." },
+      { q: "Nested if kya hota hai?", type: "mcq", options: ["Ek if ke andar doosra if", "Do alag functions", "Ek loop ke andar if", "Yeh invalid hai Python mein"], answer: 0, exp: "Nested if matlab ek if statement ke andar ek aur if likhna — deeper decisions lene ke liye." },
+      { q: "x = 5\ny = 10\nif x > 3 or y > 100:\n    print(\"Yes\")", type: "predict", options: ["Yes", "Nothing prints", "Error", "No"], answer: 0, exp: "'or' mein sirf ek condition True hone se kaafi hai — x>3 True hai, isliye 'Yes' print hoga." },
+      { q: "password = \"1234\"\nif password == \"1234\":\n    print(\"Access Granted\")\nelse:\n    print(\"Denied\")", type: "predict", options: ["Access Granted", "Denied", "Error", "1234"], answer: 0, exp: "String comparison exact match check karta hai — dono \"1234\" same hain, isliye 'Access Granted'." },
+      { q: "x = 7\nif not x == 5:\n    print(\"Not five\")", type: "predict", options: ["Not five", "Nothing prints", "Error", "five"], answer: 0, exp: "x==5 False hai (7 ≠ 5), aur 'not False' True ban jaata hai — isliye print hoga." },
+      { q: "Python mein switch-case statement hota hai kya?", type: "mcq", options: ["Haan, 'switch' keyword se", "Nahi, iske bajaye if-elif ya match-case (3.10+) use hota hai", "Haan, 'case' keyword se", "Sirf loops mein hota hai"], answer: 1, exp: "Purane Python mein traditional switch-case nahi hota — if-elif chain use karte hain, ya naye Python (3.10+) mein match-case." },
+      { q: "score = 100\nif score == 100:\n    print(\"Perfect\")\nprint(\"Test Done\")", type: "predict", options: ["Perfect", "Test Done", "Perfect\\nTest Done", "Nothing"], answer: 2, exp: "Condition True hai isliye 'Perfect' print hoga, aur 'Test Done' if ke bahar hai isliye woh bhi hamesha chalega." },
+      { q: "x = 15\ny = 20\nif x > y:\n    print(\"X bigger\")\nelse:\n    print(\"Y bigger or equal\")", type: "predict", options: ["X bigger", "Y bigger or equal", "Error", "Nothing"], answer: 1, exp: "15, 20 se bada nahi hai, isliye else chalega: 'Y bigger or equal'." },
+    ],
+  },
+  {
+    id: "loops",
+    name: "Loops (for & while)",
+    color: "#A78BFA",
+    concept: "Loops se repetitive kaam baar-baar likhna nahi padta. 'for' fixed baar chalta hai, 'while' condition True hone tak chalta hai.",
+    questions: [
+      { q: "for i in range(3):\n    print(i)", type: "predict", options: ["1 2 3", "0 1 2", "0 1 2 3", "1 2"], answer: 1, exp: "range(3) 0 se shuru hokar 3 se pehle tak jaata hai: 0, 1, 2." },
+      { q: "total = 0\nfor i in range(1, 5):\n    total += i\nprint(total)", type: "predict", options: ["10", "9", "15", "6"], answer: 0, exp: "1+2+3+4 = 10 (range(1,5) mein 5 include nahi hota)." },
+      { q: "i = 0\nwhile i < 3:\n    print(i)\n    i += 1", type: "predict", options: ["0 1 2 3", "0 1 2", "Infinite loop", "1 2 3"], answer: 1, exp: "i, 3 se chhota hone tak loop chalta hai: 0, 1, 2 print hoga, phir i=3 par loop ruk jaata hai." },
+      { q: "Kaunsa keyword loop ko turant rok deta hai?", type: "mcq", options: ["stop", "break", "end", "exit"], answer: 1, exp: "'break' loop ko immediately terminate kar deta hai, chahe condition abhi bhi True ho." },
+      { q: "for i in range(5):\n    if i == 3:\n        continue\n    print(i)", type: "predict", options: ["0 1 2 3 4", "0 1 2 4", "0 1 2", "3"], answer: 1, exp: "'continue' sirf current iteration skip karta hai, loop chalta rehta hai — isliye 3 miss hoga, baaki sab print honge." },
+      { q: "for i in range(10, 0, -2):\n    print(i, end=' ')", type: "predict", options: ["10 8 6 4 2", "10 9 8...1", "2 4 6 8 10", "Error"], answer: 0, exp: "range(10, 0, -2) 10 se start hokar 2-2 ghatate hue 0 se pehle tak jaata hai: 10 8 6 4 2." },
+      { q: "count = 0\nwhile True:\n    count += 1\n    if count == 3:\n        break\nprint(count)", type: "predict", options: ["Infinite loop", "3", "0", "Error"], answer: 1, exp: "while True hamesha chalta hai, lekin count==3 hote hi break loop ko rok deta hai — output 3." },
+      { q: "for i in range(2, 8, 2):\n    print(i, end=' ')", type: "predict", options: ["2 4 6", "2 4 6 8", "2 3 4 5 6 7", "Error"], answer: 0, exp: "range(2,8,2) 2 se start hokar 2-2 badhte hue 8 se pehle tak jaata hai: 2, 4, 6." },
+      { q: "for letter in \"abc\":\n    print(letter)", type: "predict", options: ["abc", "a\\nb\\nc", "Error", "'abc'"], answer: 1, exp: "for loop string ke har character pe ek-ek karke chal sakta hai — a, b, c alag-alag lines mein print honge." },
+      { q: "for fruit in [\"apple\", \"mango\"]:\n    print(fruit)", type: "predict", options: ["apple\\nmango", "['apple','mango']", "Error", "apple mango"], answer: 0, exp: "for loop directly list ke items pe iterate karta hai — har fruit alag line mein print hoga." },
+      { q: "i = 5\nwhile i > 0:\n    print(i)\n    i -= 1", type: "predict", options: ["1 2 3 4 5", "5 4 3 2 1", "Infinite loop", "5"], answer: 1, exp: "i har baar 1 kam hota hai jab tak 0 se bada hai — order descending hoga: 5, 4, 3, 2, 1." },
+      { q: "for i in range(3):\n    for j in range(2):\n        print(i, j)", type: "mcq", options: ["3 baar print hoga", "2 baar print hoga", "6 baar print hoga", "5 baar print hoga"], answer: 2, exp: "Nested loop mein outer 3 baar chalta hai aur har baar inner 2 baar — total 3×2 = 6 baar print hoga." },
+      { q: "total = 0\ni = 1\nwhile i <= 5:\n    total += i\n    i += 1\nprint(total)", type: "predict", options: ["10", "15", "5", "Error"], answer: 1, exp: "1+2+3+4+5 = 15 — while loop yahan for jaisa hi sum kar raha hai." },
+      { q: "for i in range(5):\n    pass\nprint(\"done\")", type: "predict", options: ["done", "0 1 2 3 4\\ndone", "Error", "Nothing"], answer: 0, exp: "'pass' ek placeholder hai jo kuch nahi karta — loop chalta hai par kuch print nahi hota, sirf 'done' print hoga." },
+      { q: "'for' loop kab use karte hain?", type: "mcq", options: ["Jab pehle se pata ho kitni baar repeat karna hai", "Jab pata na ho kitni baar chalega", "Sirf strings ke liye", "Sirf numbers ke liye"], answer: 0, exp: "'for' loop tab best hota hai jab hume pata ho ki fixed baar ya ek known sequence pe repeat karna hai." },
+      { q: "'while' loop kab use karte hain?", type: "mcq", options: ["Jab tak condition True rahe, tab tak (fixed count pata na ho)", "Sirf lists ke liye", "Jab exactly 10 baar chalana ho", "Kabhi nahi"], answer: 0, exp: "'while' loop tab use hota hai jab humein exact count pata na ho, bas ek condition ke True hone tak chalte rehna hai." },
+      { q: "count = 0\nfor i in range(100):\n    count += 1\n    if count == 5:\n        break\nprint(count)", type: "predict", options: ["100", "5", "4", "Error"], answer: 1, exp: "count==5 hote hi break loop ko turant rok deta hai, chahe range 100 tak ho — output 5." },
+      { q: "for i in range(3):\n    print(\"Hi\")", type: "mcq", options: ["1 baar", "2 baar", "3 baar", "Infinite"], answer: 2, exp: "range(3) 3 baar loop chalata hai (0,1,2) — isliye 'Hi' 3 baar print hoga." },
+      { q: "x = 1\nwhile x <= 3:\n    print(x*x)\n    x += 1", type: "predict", options: ["1 2 3", "1 4 9", "1 2 4", "Error"], answer: 1, exp: "Har iteration mein x ka square print hota hai: 1²=1, 2²=4, 3²=9." },
+      { q: "for i in [10, 20, 30]:\n    if i == 20:\n        break\n    print(i)", type: "predict", options: ["10\\n20\\n30", "10", "10\\n20", "Nothing"], answer: 1, exp: "i=20 hote hi break se pehle print(i) chalta hi nahi — 20 se pehle sirf 10 print hua tha, phir loop ruk gaya." },
+    ],
+  },
+  {
+    id: "lists",
+    name: "Lists",
+    color: "#F59E0B",
+    concept: "List ek ordered collection hai — [] mein items, jinhe add/remove/sort kiya ja sakta hai. Bahut game logic (score, inventory) lists se banti hai.",
+    questions: [
+      { q: "nums = [1, 2, 3]\nnums.append(4)\nprint(nums)", type: "predict", options: ["[1, 2, 3, 4]", "[4, 1, 2, 3]", "[1,2,3]", "Error"], answer: 0, exp: ".append() list ke end mein naya element add karta hai." },
+      { q: "fruits = [\"apple\", \"mango\", \"kiwi\"]\nprint(len(fruits))", type: "predict", options: ["2", "3", "4", "Error"], answer: 1, exp: "len() list mein total kitne elements hain woh count karta hai — yahan 3 fruits hain." },
+      { q: "nums = [5, 2, 8, 1]\nnums.sort()\nprint(nums)", type: "predict", options: ["[5,2,8,1]", "[1,2,5,8]", "[8,5,2,1]", "Error"], answer: 1, exp: ".sort() list ko ascending order mein arrange kar deta hai." },
+      { q: "a = [1, 2, 3]\nb = a\nb.append(4)\nprint(a)", type: "predict", options: ["[1,2,3]", "[1,2,3,4]", "Error", "[4]"], answer: 1, exp: "Lists reference type hoti hain — b, a ka hi reference hai, isliye b mein change karne se a bhi badal jaata hai." },
+      { q: "print([1,2,3] + [4,5])", type: "predict", options: ["[5,7,8]", "[1,2,3,4,5]", "Error", "[1,2,3,[4,5]]"], answer: 1, exp: "Do lists ko '+' se jodne par ek nayi combined list ban jaati hai." },
+      { q: "nums = [10, 20, 30]\nnums.remove(20)\nprint(nums)", type: "predict", options: ["[10, 30]", "[10, 20, 30]", "Error", "[20]"], answer: 0, exp: ".remove(value) us value ko list se dhundh kar hata deta hai." },
+      { q: "print([1, 2, 3][-1])", type: "predict", options: ["1", "3", "Error", "-1"], answer: 1, exp: "Negative index end se count karta hai — [-1] hamesha last element deta hai, yahan 3." },
+      { q: "nums = [1, 2, 3]\nnums.insert(1, 99)\nprint(nums)", type: "predict", options: ["[1, 99, 2, 3]", "[99, 1, 2, 3]", "[1, 2, 99, 3]", "Error"], answer: 0, exp: ".insert(index, value) diye gaye index par value daal deta hai, baaki elements aage khisak jaate hain." },
+      { q: "nums = [1, 2, 3, 4, 5]\nprint(nums[:3])", type: "predict", options: ["[1, 2, 3]", "[2, 3, 4]", "[4, 5]", "Error"], answer: 0, exp: "Slicing [:3] shuru se index 3 tak (exclusive) le leta hai — [1, 2, 3]." },
+      { q: "nums = [1, 2, 3]\nnums.pop()\nprint(nums)", type: "predict", options: ["[1, 2, 3]", "[1, 2]", "[2, 3]", "Error"], answer: 1, exp: ".pop() bina index diye default mein list ka last element hata deta hai." },
+      { q: "print(3 in [1, 2, 3])", type: "predict", options: ["True", "False", "Error", "3"], answer: 0, exp: "'in' check karta hai ki value list ke andar maujood hai ya nahi — 3 maujood hai, isliye True." },
+      { q: "nums = [5, 1, 4, 2]\nprint(max(nums))", type: "predict", options: ["5", "1", "4", "2"], answer: 0, exp: "max() list ki sabse badi value return karta hai — yahan 5." },
+      { q: "nums = [5, 1, 4, 2]\nprint(min(nums))", type: "predict", options: ["5", "1", "4", "2"], answer: 1, exp: "min() list ki sabse chhoti value return karta hai — yahan 1." },
+      { q: "nums = [1, 2, 3]\nprint(sum(nums))", type: "predict", options: ["3", "6", "123", "Error"], answer: 1, exp: "sum() list ke sabhi numbers ka total deta hai — 1+2+3 = 6." },
+      { q: "empty = []\nprint(len(empty))", type: "predict", options: ["0", "None", "Error", "1"], answer: 0, exp: "Khaali list mein koi element nahi hota, isliye len() 0 deta hai." },
+      { q: "nums = [1, 2, 3]\nnums.reverse()\nprint(nums)", type: "predict", options: ["[1, 2, 3]", "[3, 2, 1]", "Error", "[3, 1, 2]"], answer: 1, exp: ".reverse() list ka order ulta kar deta hai." },
+      { q: "matrix = [[1, 2], [3, 4]]\nprint(matrix[1][0])", type: "predict", options: ["1", "2", "3", "4"], answer: 2, exp: "matrix[1] doosri list [3,4] deta hai, aur [0] uska pehla element — 3." },
+      { q: "nums = [1, 2, 2, 3]\nprint(nums.count(2))", type: "predict", options: ["1", "2", "3", "Error"], answer: 1, exp: ".count(value) batata hai ki woh value list mein kitni baar aayi — 2, do baar hai." },
+      { q: "List aur tuple mein main difference kya hai?", type: "mcq", options: ["List mutable hoti hai (change ho sakti hai), tuple immutable", "Dono same hote hain", "Tuple mutable, list immutable", "List sirf numbers rakh sakti hai"], answer: 0, exp: "List ke elements change/add/remove ho sakte hain, lekin tuple banne ke baad fix ho jaata hai." },
+      { q: "nums = list(range(5))\nprint(nums)", type: "predict", options: ["[0, 1, 2, 3, 4]", "[1, 2, 3, 4, 5]", "range(5)", "Error"], answer: 0, exp: "list() range object ko ek actual list mein convert kar deta hai — [0, 1, 2, 3, 4]." },
+    ],
+  },
+  {
+    id: "dicts",
+    name: "Dictionaries",
+    color: "#22D3EE",
+    concept: "Dictionary key-value pairs store karti hai — jaise ek real dictionary mein word (key) aur uska meaning (value).",
+    questions: [
+      { q: "student = {\"name\": \"Aditi\", \"age\": 20}\nprint(student[\"name\"])", type: "predict", options: ["name", "Aditi", "age", "Error"], answer: 1, exp: "Dictionary mein key se value access hoti hai — student[\"name\"] uski value 'Aditi' deta hai." },
+      { q: "d = {\"a\": 1}\nd[\"b\"] = 2\nprint(d)", type: "predict", options: ["{'a':1}", "{'a':1,'b':2}", "Error", "{'b':2}"], answer: 1, exp: "Nayi key assign karne se woh dictionary mein add ho jaati hai." },
+      { q: "Dictionary ki saari keys nikalne ke liye kaunsa method use hota hai?", type: "mcq", options: [".keys()", ".getkeys()", ".allkeys()", ".key()"], answer: 0, exp: ".keys() dictionary ki sabhi keys ki list-jaisi cheez return karta hai." },
+      { q: "d = {\"x\": 1, \"y\": 2}\nprint(d.get(\"z\", 0))", type: "predict", options: ["Error", "None", "0", "z"], answer: 2, exp: ".get() agar key na mile to default value return karta hai — yahan default 0 diya gaya hai, isliye 0 milega." },
+      { q: "scores = {\"Aditi\": 90}\nscores[\"Aditi\"] += 5\nprint(scores)", type: "predict", options: ["{'Aditi': 95}", "{'Aditi': 90}", "Error", "{'Aditi': 5}"], answer: 0, exp: "+= existing value mein 5 add kar deta hai — 90+5 = 95." },
+      { q: "d = {\"a\":1, \"b\":2}\nprint(\"a\" in d)", type: "predict", options: ["True", "False", "Error", "1"], answer: 0, exp: "'in' check karta hai ki key dictionary mein maujood hai ya nahi — 'a' maujood hai isliye True." },
+    ],
+  },
+  {
+    id: "funcs",
+    name: "Functions",
+    color: "#EC4899",
+    concept: "Function code ka reusable block hai — ek baar likho, jitni baar chaho use karo. 'def' se banate hain, 'return' se value wapas bhejte hain.",
+    questions: [
+      { q: "def greet(name):\n    return \"Hi \" + name\n\nprint(greet(\"Aditi\"))", type: "predict", options: ["Hi Aditi", "greet(Aditi)", "Error", "name"], answer: 0, exp: "Function call hone par 'name' parameter mein \"Aditi\" jaata hai aur return statement 'Hi Aditi' deta hai." },
+      { q: "def add(a, b=5):\n    return a + b\n\nprint(add(10))", type: "predict", options: ["15", "10", "Error", "5"], answer: 0, exp: "b ki default value 5 hai, aur sirf a=10 diya gaya, isliye 10+5=15." },
+      { q: "Function define karne ke liye kaunsa keyword use hota hai?", type: "mcq", options: ["function", "def", "func", "define"], answer: 1, exp: "Python mein function 'def' keyword se define hota hai." },
+      { q: "def square(n):\n    n * n\n\nprint(square(4))", type: "predict", options: ["16", "4", "None", "Error"], answer: 2, exp: "Function mein 'return' missing hai — isliye value calculate hoke bhi wapas nahi aati, output None milta hai." },
+      { q: "def multiply(a, b):\n    return a * b\n\nresult = multiply(3, 4)\nprint(result)", type: "predict", options: ["7", "12", "34", "Error"], answer: 1, exp: "3 aur 4 ka multiplication 12 hota hai, jo return hoke result variable mein store ho jaata hai." },
+      { q: "def show(*args):\n    print(len(args))\n\nshow(1, 2, 3, 4)", type: "predict", options: ["1", "4", "Error", "args"], answer: 1, exp: "*args function ko jitne bhi arguments do, sabko ek tuple mein pack kar deta hai — yahan 4 values di gayi." },
+    ],
+  },
+  {
+    id: "tuples",
+    name: "Tuples & Sets",
+    color: "#38BDF8",
+    concept: "Tuple ek list jaisi hi hoti hai lekin ek baar bann jaaye to change nahi ho sakti (immutable). Set mein sirf unique values hoti hain, duplicate nahi.",
+    questions: [
+      { q: "t = (1, 2, 3)\nt[0] = 10", type: "predict", options: ["(10, 2, 3)", "TypeError", "(1, 2, 3)", "None"], answer: 1, exp: "Tuples immutable hote hain — banne ke baad unke elements change nahi kiye ja sakte, isliye error aayega." },
+      { q: "s = {1, 2, 2, 3, 3, 3}\nprint(s)", type: "predict", options: ["{1, 2, 2, 3, 3, 3}", "{1, 2, 3}", "Error", "[1,2,3]"], answer: 1, exp: "Set automatically duplicates hata deta hai — sirf unique values rakhta hai: {1, 2, 3}." },
+      { q: "Tuple banane ke liye kaunsa syntax use hota hai?", type: "mcq", options: ["[1, 2, 3]", "{1, 2, 3}", "(1, 2, 3)", "<1, 2, 3>"], answer: 2, exp: "Round brackets () tuple banate hain, square [] list, aur curly {} set/dictionary." },
+      { q: "point = (4, 5)\nx, y = point\nprint(x, y)", type: "predict", options: ["4 5", "(4, 5)", "Error", "point point"], answer: 0, exp: "Tuple unpacking se x aur y directly tuple ki values le lete hain — x=4, y=5." },
+      { q: "print(len((1, 2, 3)))", type: "predict", options: ["2", "3", "Error", "1"], answer: 1, exp: "len() tuple mein bhi total elements count karta hai, jaise list mein karta hai — 3 elements." },
+      { q: "a = {1, 2, 3}\nb = {2, 3, 4}\nprint(a & b)", type: "predict", options: ["{1,2,3,4}", "{2, 3}", "{1}", "Error"], answer: 1, exp: "'&' dono sets ka intersection (common elements) deta hai — sirf 2 aur 3 dono mein hain." },
+    ],
+  },
+  {
+    id: "exc",
+    name: "Errors & Exceptions",
+    color: "#F87171",
+    concept: "Kabhi kabhi code crash ho sakta hai (jaise 0 se divide karna). try/except se hum us crash ko 'catch' karke gracefully handle karte hain.",
+    questions: [
+      { q: "try:\n    print(10 / 0)\nexcept ZeroDivisionError:\n    print(\"Can't divide by zero\")", type: "predict", options: ["10", "Can't divide by zero", "Error crashes program", "0"], answer: 1, exp: "10/0 se error aata, lekin try/except us error ko 'catch' kar leta hai aur apna friendly message print karta hai." },
+      { q: "Error ko handle karne ke liye kaunsa block use hota hai?", type: "mcq", options: ["try / except", "if / else", "catch / finally", "handle / error"], answer: 0, exp: "Python mein try block mein risky code likhte hain, aur except block mein us error ka handling." },
+      { q: "try:\n    x = int(\"abc\")\nexcept ValueError:\n    print(\"Invalid number\")", type: "predict", options: ["abc", "Invalid number", "Program crashes", "0"], answer: 1, exp: "\"abc\" ko number mein convert nahi kar sakte, isliye ValueError aata hai jo except block catch kar leta hai." },
+      { q: "try:\n    print(\"A\")\nfinally:\n    print(\"B\")", type: "predict", options: ["A", "B", "A\\nB", "B\\nA"], answer: 2, exp: "'finally' block hamesha chalta hai — chahe error aaye ya na aaye. Pehle A print hoga, phir finally ka B." },
+      { q: "print(1 + \"1\")", type: "predict", options: ["11", "2", "TypeError", "None"], answer: 2, exp: "Number aur string ko directly '+' se nahi jod sakte — yeh TypeError deta hai, isse pehle int(\"1\") karna padta." },
+    ],
+  },
+  {
+    id: "modules",
+    name: "Modules & Random",
+    color: "#C084FC",
+    concept: "Modules pehle-se-likhe tools ka collection hote hain jinhe 'import' karke use karte hain. 'random' module se games mein randomness (dice, shuffle) aati hai.",
+    questions: [
+      { q: "External code use karne ke liye kaunsa keyword use hota hai?", type: "mcq", options: ["include", "import", "use", "require"], answer: 1, exp: "Python mein 'import module_name' likh kar us module ke functions use kar sakte hain." },
+      { q: "import random\nnum = random.randint(1, 6)\nprint(num)", type: "predict", options: ["Hamesha 1", "1 se 6 ke beech koi bhi number", "Error", "6"], answer: 1, exp: "random.randint(1, 6) dice roll jaisa hai — 1 se 6 (dono included) ke beech koi bhi random number deta hai." },
+      { q: "import math\nprint(math.sqrt(16))", type: "predict", options: ["4.0", "8", "256", "Error"], answer: 0, exp: "math.sqrt() square root nikalta hai — 16 ka square root 4.0 hai." },
+      { q: "items = [\"sword\", \"shield\", \"potion\"]\nimport random\nrandom.shuffle(items)\nprint(len(items))", type: "predict", options: ["3", "0", "Error", "Depends"], answer: 0, exp: "shuffle() sirf order badalta hai, items ki total count same rehti hai — 3." },
+      { q: "import random\nchoice = random.choice([\"rock\", \"paper\", \"scissors\"])", type: "predict", options: ["choice hamesha 'rock' hogi", "choice list mein se koi ek random item hogi", "Error", "choice khaali hogi"], answer: 1, exp: "random.choice() ek list se randomly ek item pick karta hai — Rock-Paper-Scissors jaisa game banane ke liye perfect." },
+      { q: "print(random.random())", type: "mcq", options: ["0 se 1 ke beech ek decimal number", "1 se 10 ke beech integer", "Hamesha 0.5", "Error, import missing"], answer: 0, exp: "random.random() 0.0 se 1.0 ke beech ek decimal (float) number generate karta hai." },
+    ],
+  },
+  {
+    id: "comp",
+    name: "List Comprehension",
+    color: "#FBBF24",
+    concept: "List comprehension ek shortcut hai loop se list banane ka — ek hi line mein! Jaise [x*2 for x in range(5)].",
+    questions: [
+      { q: "squares = [x*x for x in range(4)]\nprint(squares)", type: "predict", options: ["[0, 1, 4, 9]", "[1, 4, 9, 16]", "[0,1,2,3]", "Error"], answer: 0, exp: "range(4) = 0,1,2,3 — har number ka square: 0, 1, 4, 9." },
+      { q: "evens = [x for x in range(10) if x % 2 == 0]\nprint(evens)", type: "predict", options: ["[0,2,4,6,8]", "[1,3,5,7,9]", "[0,1,2,...,9]", "Error"], answer: 0, exp: "if condition sirf even numbers ko filter karke list mein daalta hai." },
+      { q: "yeh normal loop se list comprehension mein convert karo:\nresult = []\nfor x in range(3):\n    result.append(x+1)", type: "mcq", options: ["[x+1 for x in range(3)]", "[x for x+1 in range(3)]", "for x+1 in range(3)", "[range(3)+1]"], answer: 0, exp: "List comprehension ka structure: [expression for item in iterable] — yahan expression x+1 hai." },
+      { q: "words = [\"hi\", \"bye\"]\nlengths = [len(w) for w in words]\nprint(lengths)", type: "predict", options: ["[2, 3]", "['hi','bye']", "[hi, bye]", "Error"], answer: 0, exp: "Har word ki length nikaal kar nayi list ban rahi hai: 'hi'=2, 'bye'=3." },
+    ],
+  },
+  {
+    id: "oop",
+    name: "Classes & OOP Basics",
+    color: "#F472B6",
+    concept: "Class ek blueprint hai — jaise 'Player' banane ka design. Object us blueprint se banaya gaya actual cheez hai. Games mein har character ek object hota hai!",
+    questions: [
+      { q: "class Player:\n    def __init__(self, name):\n        self.name = name\n\np = Player(\"Aditi\")\nprint(p.name)", type: "predict", options: ["Player", "Aditi", "self.name", "Error"], answer: 1, exp: "__init__ object banate hi automatically chalta hai — yahan self.name mein 'Aditi' store ho gaya." },
+      { q: "Class define karne ke liye kaunsa keyword use hota hai?", type: "mcq", options: ["class", "Class", "object", "struct"], answer: 0, exp: "Python mein lowercase 'class' keyword se class define hoti hai." },
+      { q: "class Player:\n    health = 100\n\np1 = Player()\np2 = Player()\nprint(p1.health, p2.health)", type: "predict", options: ["100 100", "100 0", "Error", "None None"], answer: 0, exp: "Dono objects (p1, p2) apni class ka default health value (100) share karte hain jab tak change na ho." },
+      { q: "class Player:\n    def __init__(self, hp):\n        self.hp = hp\n    def heal(self):\n        self.hp += 10\n\np = Player(50)\np.heal()\nprint(p.hp)", type: "predict", options: ["50", "60", "10", "Error"], answer: 1, exp: "heal() method call hone par self.hp mein 10 add ho jaata hai — 50+10 = 60." },
+      { q: "'self' ka use kya hota hai class ke andar?", type: "mcq", options: ["Current object ko refer karta hai", "Class ka naam hota hai", "Kuch nahi karta, optional hai", "Sirf print ke liye"], answer: 0, exp: "'self' us specific object ko point karta hai jispar method call ho raha hai — har object ka apna data alag rehta hai." },
+      { q: "class Enemy:\n    def __init__(self, name):\n        self.name = name\n    def attack(self):\n        return f\"{self.name} attacks!\"\n\ne = Enemy(\"Dragon\")\nprint(e.attack())", type: "predict", options: ["Dragon attacks!", "Enemy attacks!", "self.name attacks!", "Error"], answer: 0, exp: "f-string ke andar self.name apne aap 'Dragon' se replace ho jaata hai." },
+    ],
+  },
+  {
+    id: "gamedev",
+    name: "🎮 Game Making Basics",
+    color: "#34D399",
+    concept: "Har chhota text-game (jaise number-guessing ya rock-paper-scissors) sirf 3 cheezon se banta hai: while loop (game chalta rahe), random (unpredictability), aur if/else (rules check karna). Chalo dekhte hain kaise!",
+    questions: [
+      { q: "Ek simple game loop banane ke liye kaunsa loop best hai jab tak player haare/jeete?", type: "mcq", options: ["for i in range(1)", "while True", "if True", "loop()"], answer: 1, exp: "'while True' game ko tab tak chalata rehta hai jab tak andar se koi break condition (jeetna/haarna) na aaye — isse 'game loop' kehte hain." },
+      { q: "import random\nsecret = random.randint(1, 10)\nguess = 7\nif guess == secret:\n    print(\"You win!\")\nelse:\n    print(\"Try again\")", type: "predict", options: ["Hamesha 'You win!'", "'You win!' ya 'Try again' — secret pe depend karta hai", "Error", "Hamesha 'Try again'"], answer: 1, exp: "secret random hai, isliye result depend karega ki guess (7) secret ke barabar hai ya nahi — yehi guessing game ka core logic hai." },
+      { q: "score = 0\ndef add_point():\n    global score\n    score += 1\n\nadd_point()\nadd_point()\nprint(score)", type: "predict", options: ["0", "1", "2", "Error"], answer: 2, exp: "'global score' function ko outer score variable change karne deta hai. Do baar call hone se score 0→1→2 ho gaya — yeh scoring system ka basic idea hai." },
+      { q: "moves = [\"rock\", \"paper\", \"scissors\"]\nplayer = \"rock\"\ncomputer = random.choice(moves)\nif player == computer:\n    print(\"Draw\")", type: "predict", options: ["Hamesha Draw print hoga", "Draw sirf tab print hoga jab computer bhi 'rock' choose kare", "Error", "Kabhi print nahi hoga"], answer: 1, exp: "computer random choose karta hai — Draw sirf tab hoga jab dono ka choice match kare, jo Rock-Paper-Scissors ka rule hai." },
+      { q: "lives = 3\nwhile lives > 0:\n    lives -= 1\nprint(\"Game Over\")", type: "predict", options: ["Infinite loop, kabhi print nahi hoga", "'Game Over' print hoga jab lives 0 ho jaye", "Error", "Turant print hoga"], answer: 1, exp: "Har iteration mein lives ek-ek karke kam hoti hai (3→2→1→0), jab condition False ho jaati hai loop ruk jaata hai aur 'Game Over' print hota hai — health/lives system ka basic pattern." },
+      { q: "Player ka input lene ke liye (jaise unka move) kaunsa function use hota hai?", type: "mcq", options: ["input()", "get()", "read()", "prompt()"], answer: 0, exp: "input() user se text type karwa kar leta hai — jaise game mein player se move puchna." },
+      { q: "high_score = 0\nnew_score = 85\nif new_score > high_score:\n    high_score = new_score\nprint(high_score)", type: "predict", options: ["0", "85", "Error", "None"], answer: 1, exp: "Yeh 'high score update' ka classic pattern hai — agar naya score purane se zyada hai, to update kar do. 85 > 0, isliye high_score = 85." },
+    ],
+  },
+];
+
+const MASCOT_MSGS_CORRECT = ["Badhiya! 🎉", "Ekdum sahi!", "Shabaash Aditi!", "Perfect!", "Wah, on point!"];
+const MASCOT_MSGS_WRONG = ["Koi baat nahi, aage badho", "Close tha! Explanation dekho", "Yeh tricky tha, samajh lo", "Practice se ho jayega"];
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ---------- Bonus interactive: Guess the Number game ----------
+function GuessGame({ color, onBack }) {
+  const secretRef = useRef(Math.floor(Math.random() * 20) + 1);
+  const [guess, setGuess] = useState("");
+  const [tries, setTries] = useState(0);
+  const [log, setLog] = useState([]);
+  const [won, setWon] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  function submitGuess() {
+    const g = parseInt(guess, 10);
+    if (isNaN(g)) return;
+    const t = tries + 1;
+    setTries(t);
+    if (g === secretRef.current) {
+      setLog((l) => [`✅ ${g} — Sahi! ${t} tries mein mila.`, ...l]);
+      setWon(true);
+    } else if (g < secretRef.current) {
+      setLog((l) => [`🔼 ${g} — thoda upar socho`, ...l]);
+    } else {
+      setLog((l) => [`🔽 ${g} — thoda neeche socho`, ...l]);
+    }
+    setGuess("");
+  }
+
+  function reset() {
+    secretRef.current = Math.floor(Math.random() * 20) + 1;
+    setTries(0);
+    setLog([]);
+    setWon(false);
+    setGuess("");
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: "#6B7280", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>&larr; topics</button>
+        <button onClick={() => setShowCode((s) => !s)} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "1px solid #2a2c42", borderRadius: 8, padding: "5px 10px", color: "#9698b0", fontSize: 12, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+          <Code2 size={13} /> {showCode ? "Hide" : "Show"} Python code
+        </button>
+      </div>
+
+      <div style={{ textAlign: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 34 }}>🎯</div>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>Guess the Number</div>
+        <div style={{ fontSize: 13, color: "#9698b0" }}>Maine 1 se 20 ke beech ek number socha hai</div>
+      </div>
+
+      {showCode && (
+        <div style={{ background: "#0f1019", border: "1px solid #2a2c42", borderRadius: 12, padding: 14, marginBottom: 14, fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, color: "#9698b0", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+{`import random
+secret = random.randint(1, 20)
+tries = 0
+
+while True:
+    guess = int(input("Guess: "))
+    tries += 1
+    if guess == secret:
+        print(f"Correct in {tries} tries!")
+        break
+    elif guess < secret:
+        print("Go higher")
+    else:
+        print("Go lower")`}
+        </div>
+      )}
+
+      {!won ? (
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <input
+            type="number"
+            value={guess}
+            onChange={(e) => setGuess(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitGuess()}
+            placeholder="Apna guess likho..."
+            style={{ flex: 1, background: "#181927", border: "1px solid #2a2c42", borderRadius: 10, padding: "11px 14px", color: "#E8E8F0", fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}
+          />
+          <button onClick={submitGuess} style={{ background: color, border: "none", borderRadius: 10, padding: "0 18px", color: "#12131f", fontWeight: 700, cursor: "pointer" }}>Go</button>
+        </div>
+      ) : (
+        <button onClick={reset} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: color, border: "none", borderRadius: 10, padding: "12px 0", color: "#12131f", fontWeight: 700, cursor: "pointer", marginBottom: 14, fontFamily: "'Space Grotesk', sans-serif" }}>
+          <RotateCcw size={15} /> Phir se khelo
+        </button>
+      )}
+
+      <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 8, fontFamily: "'JetBrains Mono', monospace" }}>Tries: {tries}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+        {log.map((l, i) => (
+          <div key={i} style={{ background: "#181927", border: "1px solid #2a2c42", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "'JetBrains Mono', monospace" }}>{l}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PyQuest() {
+  const [screen, setScreen] = useState("home"); // home | intro | quiz | result | game
+  const [topicIdx, setTopicIdx] = useState(0);
+  const [qIdx, setQIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [revealed, setRevealed] = useState(false);
+  const [xp, setXp] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [sessionCorrect, setSessionCorrect] = useState(0);
+  const [completedTopics, setCompletedTopics] = useState({});
+
+  const topic = TOPICS[topicIdx];
+  const question = topic?.questions[qIdx];
+
+  function openIntro(idx) {
+    setTopicIdx(idx);
+    setScreen("intro");
+  }
+
+  function startTopic() {
+    setQIdx(0);
+    setSelected(null);
+    setRevealed(false);
+    setSessionCorrect(0);
+    setScreen("quiz");
+  }
+
+  function selectAnswer(i) {
+    if (revealed) return;
+    setSelected(i);
+    setRevealed(true);
+    if (i === question.answer) {
+      setXp((x) => x + 10);
+      setStreak((s) => {
+        const ns = s + 1;
+        setBestStreak((b) => Math.max(b, ns));
+        return ns;
+      });
+      setSessionCorrect((c) => c + 1);
+    } else {
+      setStreak(0);
+    }
+  }
+
+  function next() {
+    if (qIdx + 1 < topic.questions.length) {
+      setQIdx(qIdx + 1);
+      setSelected(null);
+      setRevealed(false);
+    } else {
+      setCompletedTopics((c) => ({ ...c, [topic.id]: true }));
+      setScreen("result");
+    }
+  }
+
+  const isCorrect = revealed && selected === question?.answer;
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(180deg,#12131f 0%,#1a1b2e 100%)",
+      color: "#E8E8F0",
+      fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif",
+      display: "flex",
+      justifyContent: "center",
+      padding: "20px 14px",
+    }}>
+      <div style={{ width: "100%", maxWidth: 480 }}>
+
+        {/* Top bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, background: "#FFD43B",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+            }}>🐍</div>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 17, letterSpacing: -0.5 }}>PyQuest</span>
+          </div>
+          <div style={{ display: "flex", gap: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 3, color: "#FFD43B" }}><Zap size={14} /> {xp}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 3, color: "#FB7185" }}><Flame size={14} /> {streak}</span>
+          </div>
+        </div>
+
+        {screen === "home" && (
+          <div>
+            <div style={{
+              background: "#181927", border: "1px solid #2a2c42", borderRadius: 14,
+              padding: "16px 16px", marginBottom: 16, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, lineHeight: 1.6,
+            }}>
+              <div style={{ color: "#6B7280" }}>&gt;&gt;&gt; welcome(<span style={{ color: "#FFD43B" }}>"Aditi"</span>)</div>
+              <div style={{ color: "#4ADE80" }}>14 topics, sabse basics se lekar apna game-logic tak. Chuno aur shuru ho jao!</div>
+            </div>
+
+            <button
+              onClick={() => setScreen("game")}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+                background: "linear-gradient(135deg,#1c2e26,#141d2f)", border: "1px solid #34D399",
+                borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left",
+                color: "#E8E8F0", marginBottom: 16,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Gamepad2 size={20} color="#34D399" />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Play: Guess the Number</div>
+                  <div style={{ fontSize: 12, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>Bonus — interactive mini game + code</div>
+                </div>
+              </div>
+              <ChevronRight size={18} color="#34D399" />
+            </button>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {TOPICS.map((t, i) => (
+                <button
+                  key={t.id}
+                  onClick={() => openIntro(i)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    background: "#181927", border: `1px solid ${completedTopics[t.id] ? t.color : "#2a2c42"}`,
+                    borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left",
+                    color: "#E8E8F0", transition: "border-color .15s",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: t.color }} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{t.name}</div>
+                      <div style={{ fontSize: 12, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {t.questions.length} questions {completedTopics[t.id] ? "· done ✓" : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} color="#6B7280" />
+                </button>
+              ))}
+            </div>
+
+            {bestStreak > 2 && (
+              <div style={{ marginTop: 18, textAlign: "center", fontSize: 12, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>
+                <Trophy size={13} style={{ verticalAlign: -2, marginRight: 4 }} color="#FFD43B" />
+                Best streak: {bestStreak}
+              </div>
+            )}
+          </div>
+        )}
+
+        {screen === "game" && <GuessGame color="#34D399" onBack={() => setScreen("home")} />}
+
+        {screen === "intro" && topic && (
+          <div>
+            <button onClick={() => setScreen("home")} style={{ background: "none", border: "none", color: "#6B7280", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", marginBottom: 16 }}>&larr; topics</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <BookOpen size={20} color={topic.color} />
+              <div style={{ fontWeight: 700, fontSize: 19 }}>{topic.name}</div>
+            </div>
+            <div style={{
+              background: "#181927", border: `1px solid ${topic.color}55`, borderRadius: 14,
+              padding: 16, marginBottom: 20, fontSize: 14, lineHeight: 1.7, color: "#c8c9dc",
+            }}>
+              {topic.concept}
+            </div>
+            <button
+              onClick={startTopic}
+              style={{
+                width: "100%", background: topic.color, border: "none", borderRadius: 12,
+                padding: "13px 0", fontWeight: 700, fontSize: 15, color: "#12131f", cursor: "pointer",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              Start Practice — {topic.questions.length} questions
+            </button>
+          </div>
+        )}
+
+        {screen === "quiz" && question && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <button onClick={() => setScreen("home")} style={{ background: "none", border: "none", color: "#6B7280", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>&larr; topics</button>
+              <span style={{ fontSize: 12, color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>{qIdx + 1} / {topic.questions.length}</span>
+            </div>
+
+            <div style={{ height: 5, background: "#242640", borderRadius: 3, marginBottom: 18, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${((qIdx + (revealed?1:0)) / topic.questions.length) * 100}%`, background: topic.color, transition: "width .3s" }} />
+            </div>
+
+            <div style={{
+              background: "#0f1019", border: "1px solid #2a2c42", borderRadius: 14,
+              padding: 16, marginBottom: 16, fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 14, whiteSpace: "pre-wrap", lineHeight: 1.6,
+            }}>
+              <div style={{ color: "#6B7280", fontSize: 11, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                <Terminal size={12} /> {question.type === "predict" ? "output kya hoga?" : "sahi jawab chuno"}
+              </div>
+              <span style={{ color: "#E8E8F0" }}>{question.q}</span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {question.options.map((opt, i) => {
+                let bg = "#181927", border = "#2a2c42", txt = "#E8E8F0";
+                if (revealed) {
+                  if (i === question.answer) { bg = "#14251c"; border = "#4ADE80"; txt = "#4ADE80"; }
+                  else if (i === selected) { bg = "#2a1418"; border = "#FB7185"; txt = "#FB7185"; }
+                  else { txt = "#4b4d63"; }
+                }
+                return (
+                  <button
+                    key={i}
+                    onClick={() => selectAnswer(i)}
+                    disabled={revealed}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      background: bg, border: `1px solid ${border}`, borderRadius: 10,
+                      padding: "12px 14px", fontFamily: "'JetBrains Mono', monospace", fontSize: 13.5,
+                      color: txt, textAlign: "left", cursor: revealed ? "default" : "pointer",
+                    }}
+                  >
+                    {opt}
+                    {revealed && i === question.answer && <Check size={16} />}
+                    {revealed && i === selected && i !== question.answer && <X size={16} />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {revealed && (
+              <div style={{
+                marginTop: 16, background: isCorrect ? "#14251c" : "#181927",
+                border: `1px solid ${isCorrect ? "#4ADE80" : "#2a2c42"}`, borderRadius: 12, padding: 14,
+              }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 5, color: isCorrect ? "#4ADE80" : "#FB7185" }}>
+                  {isCorrect ? pick(MASCOT_MSGS_CORRECT) : pick(MASCOT_MSGS_WRONG)}
+                </div>
+                <div style={{ fontSize: 13, color: "#9698b0", lineHeight: 1.5 }}>{question.exp}</div>
+                <button
+                  onClick={next}
+                  style={{
+                    marginTop: 12, width: "100%", background: topic.color, border: "none",
+                    borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 14,
+                    color: "#12131f", cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {qIdx + 1 < topic.questions.length ? "Next Question" : "Finish"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {screen === "result" && (
+          <div style={{ textAlign: "center", paddingTop: 30 }}>
+            <div style={{ fontSize: 44, marginBottom: 8 }}>{sessionCorrect === topic.questions.length ? "🏆" : "🐍"}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{topic.name} complete!</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, color: "#9698b0", marginBottom: 24 }}>
+              {sessionCorrect} / {topic.questions.length} correct · +{sessionCorrect * 10} XP
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={startTopic}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, background: "#181927",
+                  border: "1px solid #2a2c42", borderRadius: 10, padding: "11px 18px",
+                  color: "#E8E8F0", cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14,
+                }}
+              ><RotateCcw size={15} /> Retry</button>
+              <button
+                onClick={() => setScreen("home")}
+                style={{
+                  background: topic.color, border: "none", borderRadius: 10, padding: "11px 18px",
+                  color: "#12131f", fontWeight: 700, cursor: "pointer", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14,
+                }}
+              >More Topics</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<PyQuest />);
+</script>
+</body>
+</html>
